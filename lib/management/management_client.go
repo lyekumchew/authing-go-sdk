@@ -6,6 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/Authing/authing-go-sdk/lib/constant"
 	"github.com/Authing/authing-go-sdk/lib/model"
 	"github.com/Authing/authing-go-sdk/lib/util/cacheutil"
@@ -13,11 +18,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/oauth2"
-	"io/ioutil"
-	"net/http"
-	"strings"
-	"sync"
-	"time"
 )
 
 // Client is a client for interacting with the GraphQL API of `Authing`
@@ -59,7 +59,7 @@ func NewClient(userPoolId string, secret string, host ...string) *Client {
 	return c
 }
 
-func NewClientWithError(userPoolId string, secret string, host ...string) (*Client, error) {
+func NewClientWithError(ctx context.Context, userPoolId string, secret string, host ...string) (*Client, error) {
 	if userPoolId == "" {
 		return nil, errors.New("请填写 userPoolId 参数")
 	}
@@ -86,75 +86,9 @@ func NewClientWithError(userPoolId string, secret string, host ...string) (*Clie
 		src := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: accessToken},
 		)
-		c.HttpClient = oauth2.NewClient(context.Background(), src)
+		c.HttpClient = oauth2.NewClient(ctx, src)
 	}
 	return c, nil
-}
-
-// NewHttpClient creates a new Authing user endpoint GraphQL API client
-func NewHttpClient(userPoolId string, appSecret string, isDev bool) *Client {
-	c := &Client{
-		userPoolId: userPoolId,
-	}
-
-	/*if c.Client == nil {
-		var endpointURL string
-		if isDev {
-			endpointURL = constant.CoreEndPointDevUrl + "/graphql/v2"
-		} else {
-			endpointURL = constant.CoreEndPointProdUrl + "/graphql/v2"
-		}
-		accessToken, err := GetAccessToken(userPoolId, appSecret)
-		if err != nil {
-			log.Println(err)
-			//return nil
-		}
-		src := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: accessToken},
-		)
-		c.HttpClient = oauth2.NewClient(context.Background(), src)
-
-		c.Client = graphql.NewClient(endpointURL, c.HttpClient)
-	}*/
-
-	return c
-}
-
-// NewOauthClient creates a new Authing oauth endpoint GraphQL API client
-func NewOauthClient(userPoolId string, appSecret string, isDev bool) *Client {
-	c := &Client{
-		userPoolId: userPoolId,
-	}
-
-	/*if c.Client == nil {
-		var endpointURL string
-		if isDev {
-			endpointURL = constant.CoreEndPointDevUrl
-		} else {
-			endpointURL = constant.CoreEndPointProdUrl
-		}
-		accessToken, err := GetAccessToken(userPoolId, appSecret)
-		if err != nil {
-			log.Println(err)
-			return nil
-		}
-
-		src := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: accessToken},
-		)
-
-		httpClient := oauth2.NewClient(context.Background(), src)
-
-		if isDev {
-			endpointURL = constant.CoreEndPointDevUrl
-		} else {
-			endpointURL = constant.CoreEndPointProdUrl
-		}
-
-		c.Client = graphql.NewClient(endpointURL, httpClient)
-	}*/
-
-	return c
 }
 
 func (c *Client) SendHttpRequest(url string, method string, query string, variables map[string]interface{}) ([]byte, error) {
@@ -191,7 +125,7 @@ func (c *Client) SendHttpRequest(url string, method string, query string, variab
 		req.Header.Add("Content-Type", "application/json")
 	}
 
-	//增加header选项
+	// 增加header选项
 	if !strings.HasPrefix(query, "query accessToken") {
 		token, _ := GetAccessToken(c)
 		req.Header.Add("Authorization", "Bearer "+token)
@@ -261,7 +195,7 @@ func (c *Client) httpGet(url string, client *http.Client) (string, error) {
 		return "", err
 	}
 
-	//增加header选项
+	// 增加header选项
 	token, _ := GetAccessToken(c)
 	reqest.Header.Add("Authorization", "Bearer "+token)
 	reqest.Header.Add("x-authing-userpool-id", ""+c.userPoolId)
@@ -371,28 +305,13 @@ func GetAccessToken(client *Client) (string, error) {
 	if b && cacheToken != nil {
 		return cacheToken.(string), nil
 	}
-	// 从服务获取token，加锁
-	var mutex sync.Mutex
-	mutex.Lock()
-	defer mutex.Unlock()
-	cacheToken, b = cacheutil.GetCache(constant.TokenCacheKeyPrefix + client.userPoolId)
-	if b && cacheToken != nil {
-		return cacheToken.(string), nil
-	}
 	token, err := QueryAccessToken(client)
 	if err != nil {
 		return "", err
 	}
-	var expire = (*(token.Exp) - time.Now().Unix() - 259200) * int64(time.Second)
-	cacheutil.SetCache(constant.TokenCacheKeyPrefix+client.userPoolId, *token.AccessToken, time.Duration(expire))
+	var expire = 24 * time.Hour
+	cacheutil.SetCache(constant.TokenCacheKeyPrefix+client.userPoolId, *token.AccessToken, expire)
 	return *token.AccessToken, nil
-}
-
-func CreateRequestParam(param struct{}) map[string]interface{} {
-	data, _ := json.Marshal(&param)
-	variables := make(map[string]interface{})
-	json.Unmarshal(data, &variables)
-	return variables
 }
 
 // SendEmail
