@@ -2,10 +2,11 @@ package management
 
 import (
 	"fmt"
-	"github.com/Authing/authing-go-sdk/lib/constant"
-	"github.com/Authing/authing-go-sdk/lib/model"
 	"log"
 	"testing"
+
+	"github.com/Authing/authing-go-sdk/lib/constant"
+	"github.com/Authing/authing-go-sdk/lib/model"
 )
 
 func TestClient_IsAllowed(t *testing.T) {

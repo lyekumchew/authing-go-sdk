@@ -59,7 +59,39 @@ func NewClient(userPoolId string, secret string, host ...string) *Client {
 	return c
 }
 
-func NewClientWithError(ctx context.Context, userPoolId string, secret string, host ...string) (*Client, error) {
+func NewClientWithError(userPoolId string, secret string, host ...string) (*Client, error) {
+	if userPoolId == "" {
+		return nil, errors.New("请填写 userPoolId 参数")
+	}
+	if secret == "" {
+		return nil, errors.New("请填写 secret 参数")
+	}
+	var clientHost string
+	if len(host) == 0 {
+		clientHost = constant.CoreAuthingDefaultUrl
+	} else {
+		clientHost = host[0]
+	}
+	c := &Client{
+		userPoolId: userPoolId,
+		secret:     secret,
+		Host:       clientHost,
+	}
+	if c.HttpClient == nil {
+		c.HttpClient = &http.Client{}
+		accessToken, err := GetAccessToken(c)
+		if err != nil {
+			return nil, err
+		}
+		src := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: accessToken},
+		)
+		c.HttpClient = oauth2.NewClient(context.Background(), src)
+	}
+	return c, nil
+}
+
+func NewClientWithErrorCtx(ctx context.Context, userPoolId string, secret string, host ...string) (*Client, error) {
 	if userPoolId == "" {
 		return nil, errors.New("请填写 userPoolId 参数")
 	}
@@ -232,7 +264,10 @@ func (c *Client) SendHttpRequestV2(url string, method string, query string, vari
 	req := fasthttp.AcquireRequest()
 
 	req.SetRequestURI(url)
-	token, _ := GetAccessToken(c)
+	token, err := GetAccessToken(c)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("x-authing-userpool-id", ""+c.userPoolId)
 	req.Header.Add("x-authing-request-from", constant.SdkType)
