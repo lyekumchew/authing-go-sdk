@@ -114,8 +114,8 @@ func (c *Client) CreateUser(request model.CreateUserRequest) (*model.User, error
 	return &response.Data.CreateUser, nil
 }
 
-//UpdateUser
-//修改用户资料
+// UpdateUser
+// 修改用户资料
 func (c *Client) UpdateUser(id string, updateInfo model.UpdateUserInput) (*model.User, error) {
 	if updateInfo.Password != nil {
 		pwd := util.RsaEncrypt(*updateInfo.Password)
@@ -141,8 +141,8 @@ func (c *Client) UpdateUser(id string, updateInfo model.UpdateUserInput) (*model
 	return &response.Data.UpdateUser, nil
 }
 
-//DeleteUser
-//删除用户
+// DeleteUser
+// 删除用户
 func (c *Client) DeleteUser(id string) (*model.CommonMessageAndCode, error) {
 
 	variables := make(map[string]interface{})
@@ -165,8 +165,8 @@ func (c *Client) DeleteUser(id string) (*model.CommonMessageAndCode, error) {
 	return &response.Data.DeleteUser, nil
 }
 
-//BatchDeleteUser
-//批量删除用户
+// BatchDeleteUser
+// 批量删除用户
 func (c *Client) BatchDeleteUser(ids []string) (*model.CommonMessageAndCode, error) {
 	variables := make(map[string]interface{})
 	variables["ids"] = ids
@@ -187,8 +187,8 @@ func (c *Client) BatchDeleteUser(ids []string) (*model.CommonMessageAndCode, err
 	return &response.Data.DeleteUsers, nil
 }
 
-//BatchGetUser
-//通过 ID、username、email、phone、email、externalId 批量获取用户详情
+// BatchGetUser
+// 通过 ID、username、email、phone、email、externalId 批量获取用户详情
 func (c *Client) BatchGetUser(ids []string, queryField string, withCustomData bool) (*[]model.User, error) {
 
 	variables := make(map[string]interface{})
@@ -215,8 +215,8 @@ func (c *Client) BatchGetUser(ids []string, queryField string, withCustomData bo
 	return &response.Data.BatchGetUsers, nil
 }
 
-//ListArchivedUsers
-//获取已归档用户列表
+// ListArchivedUsers
+// 获取已归档用户列表
 func (c *Client) ListArchivedUsers(request model.CommonPageRequest) (*model.CommonPageUsersResponse, error) {
 	data, _ := json.Marshal(&request)
 	variables := make(map[string]interface{})
@@ -239,8 +239,8 @@ func (c *Client) ListArchivedUsers(request model.CommonPageRequest) (*model.Comm
 	return &response.Data.ArchivedUsers, nil
 }
 
-//FindUser
-//查找用户
+// FindUser
+// 查找用户
 func (c *Client) FindUser(request *model.FindUserRequest) (*model.User, error) {
 
 	data, _ := json.Marshal(&request)
@@ -268,8 +268,8 @@ func (c *Client) FindUser(request *model.FindUserRequest) (*model.User, error) {
 	return &response.Data.FindUser, nil
 }
 
-//SearchUser
-//搜索用户
+// SearchUser
+// 搜索用户
 func (c *Client) SearchUser(request *model.SearchUserRequest) (*model.CommonPageUsersResponse, error) {
 	if request.Page == 0 {
 		request.Page = 1
@@ -303,8 +303,8 @@ func (c *Client) SearchUser(request *model.SearchUserRequest) (*model.CommonPage
 	return &response.Data.SearchUser, nil
 }
 
-//RefreshUserToken
-//刷新用户 token
+// RefreshUserToken
+// 刷新用户 token
 func (c *Client) RefreshUserToken(userId string) (*model.RefreshToken, error) {
 	variables := make(map[string]interface{})
 	variables["id"] = userId
@@ -326,8 +326,8 @@ func (c *Client) RefreshUserToken(userId string) (*model.RefreshToken, error) {
 	return &response.Data.RefreshToken, nil
 }
 
-//GetUserGroups
-//获取用户分组列表
+// GetUserGroups
+// 获取用户分组列表
 func (c *Client) GetUserGroups(userId string) (*struct {
 	TotalCount int                `json:"totalCount"`
 	List       []model.GroupModel `json:"list"`
@@ -352,8 +352,8 @@ func (c *Client) GetUserGroups(userId string) (*struct {
 	return &response.Data.User.Groups, nil
 }
 
-//AddUserToGroup
-//将用户加入分组
+// AddUserToGroup
+// 将用户加入分组
 func (c *Client) AddUserToGroup(userId, groupCode string) (*model.CommonMessageAndCode, error) {
 
 	variables := make(map[string]interface{})
@@ -376,8 +376,8 @@ func (c *Client) AddUserToGroup(userId, groupCode string) (*model.CommonMessageA
 	return &response.Data.AddUserToGroup, nil
 }
 
-//RemoveUserInGroup
-//将用户退出分组
+// RemoveUserInGroup
+// 将用户退出分组
 func (c *Client) RemoveUserInGroup(userId, groupCode string) (*model.CommonMessageAndCode, error) {
 
 	variables := make(map[string]interface{})
@@ -400,16 +400,18 @@ func (c *Client) RemoveUserInGroup(userId, groupCode string) (*model.CommonMessa
 	return &response.Data.RemoveUserFromGroup, nil
 }
 
-//GetUserRoles
-//获取用户角色列表
+// GetUserRoles
+// 获取用户角色列表
 func (c *Client) GetUserRoles(request model.GetUserRolesRequest) (*struct {
 	TotalCount int               `json:"totalCount"`
 	List       []model.RoleModel `json:"list"`
 }, error) {
-
 	data, _ := json.Marshal(&request)
 	variables := make(map[string]interface{})
-	json.Unmarshal(data, &variables)
+	err := json.Unmarshal(data, &variables)
+	if err != nil {
+		return nil, err
+	}
 
 	b, err := c.SendHttpRequest(c.Host+constant.CoreAuthingGraphqlPath, http.MethodPost, constant.GetUserRolesDocument, variables)
 	if err != nil {
@@ -421,15 +423,18 @@ func (c *Client) GetUserRoles(request model.GetUserRolesRequest) (*struct {
 		} `json:"data"`
 		Errors []model.GqlCommonErrors `json:"errors"`
 	}{}
-	jsoniter.Unmarshal(b, &response)
+	err = jsoniter.Unmarshal(b, &response)
+	if err != nil {
+		return nil, err
+	}
 	if len(response.Errors) > 0 {
 		return nil, errors.New(response.Errors[0].Message.Message)
 	}
 	return &response.Data.User.Roles, nil
 }
 
-//AddUserToRoles
-//将用户加入角色
+// AddUserToRoles
+// 将用户加入角色
 func (c *Client) AddUserToRoles(request model.UserRoleOptRequest) (*model.CommonMessageAndCode, error) {
 	data, _ := jsoniter.Marshal(request)
 	variables := make(map[string]interface{})
@@ -451,8 +456,8 @@ func (c *Client) AddUserToRoles(request model.UserRoleOptRequest) (*model.Common
 	return &response.Data.AssignRole, nil
 }
 
-//RemoveUserInRoles
-//将用户从角色中移除
+// RemoveUserInRoles
+// 将用户从角色中移除
 func (c *Client) RemoveUserInRoles(request model.UserRoleOptRequest) (*model.CommonMessageAndCode, error) {
 	data, _ := jsoniter.Marshal(request)
 	variables := make(map[string]interface{})
@@ -474,8 +479,8 @@ func (c *Client) RemoveUserInRoles(request model.UserRoleOptRequest) (*model.Com
 	return &response.Data.RevokeRole, nil
 }
 
-//ListUserOrg
-//获取用户所在组织机构
+// ListUserOrg
+// 获取用户所在组织机构
 func (c *Client) ListUserOrg(userId string) (*[][]model.OrgModel, error) {
 
 	url := fmt.Sprintf("%v/api/v2/users/%v/orgs", c.Host, userId)
@@ -496,8 +501,8 @@ func (c *Client) ListUserOrg(userId string) (*[][]model.OrgModel, error) {
 	return &response, nil
 }
 
-//GetUserUdfValue
-//获取某个用户的所有自定义数据
+// GetUserUdfValue
+// 获取某个用户的所有自定义数据
 func (c *Client) GetUserUdfValue(userId string) (*[]model.UserDefinedData, error) {
 	variables := make(map[string]interface{})
 
@@ -781,8 +786,8 @@ func (c *Client) UserHasRole(userId, roleCode, namespace string) (bool, error) {
 	return hasRole, nil
 }
 
-//KickUser
-//强制一批用户下线
+// KickUser
+// 强制一批用户下线
 func (c *Client) KickUser(userIds []string) (*model.CommonMessageAndCode, error) {
 
 	url := fmt.Sprintf("%v/api/v2/users/kick", c.Host)
@@ -848,8 +853,8 @@ func (c *Client) GetUserGroupList(userId string) (*model.PaginatedGroups, error)
 	return &result, nil
 }
 
-//CheckLoginStatus
-//检查用户登录状态
+// CheckLoginStatus
+// 检查用户登录状态
 func (c *Client) CheckLoginStatus(userId string, appId, deviceId *string) (*model.CommonMessageAndCode, error) {
 	variables := make(map[string]interface{}, 0)
 	if appId != nil {
@@ -871,8 +876,8 @@ func (c *Client) CheckLoginStatus(userId string, appId, deviceId *string) (*mode
 	return &result, err
 }
 
-//LogOut
-//用户退出
+// LogOut
+// 用户退出
 func (c *Client) LogOut(userId string, appId *string) (*model.CommonMessageAndCode, error) {
 	variables := make(map[string]interface{}, 0)
 	if appId != nil {
