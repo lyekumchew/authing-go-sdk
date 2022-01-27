@@ -127,14 +127,13 @@ func (c *Client) SendHttpRequest(url string, method string, query string, variab
 	var req *http.Request
 	if method == constant.HttpMethodGet {
 		req, _ = http.NewRequest(http.MethodGet, url, nil)
-		if variables != nil && len(variables) > 0 {
+		if len(variables) > 0 {
 			q := req.URL.Query()
 			for key, value := range variables {
 				q.Add(key, fmt.Sprintf("%v", value))
 			}
 			req.URL.RawQuery = q.Encode()
 		}
-
 	} else {
 		in := struct {
 			Query     string                 `json:"query"`
@@ -154,12 +153,18 @@ func (c *Client) SendHttpRequest(url string, method string, query string, variab
 			return nil, err
 		}
 		req, err = http.NewRequest(method, url, &buf)
+		if err != nil {
+			return nil, err
+		}
 		req.Header.Add("Content-Type", "application/json")
 	}
 
 	// 增加header选项
 	if !strings.HasPrefix(query, "query accessToken") {
-		token, _ := GetAccessToken(c)
+		token, err := GetAccessToken(c)
+		if err != nil {
+			return nil, err
+		}
 		req.Header.Add("Authorization", "Bearer "+token)
 	}
 	req.Header.Add("x-authing-userpool-id", ""+c.userPoolId)
