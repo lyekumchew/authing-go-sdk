@@ -2,7 +2,6 @@ package management
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,7 +16,6 @@ import (
 	"github.com/bitly/go-simplejson"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/fasthttp"
-	"golang.org/x/oauth2"
 )
 
 // Client is a client for interacting with the GraphQL API of `Authing`
@@ -47,14 +45,10 @@ func NewClient(userPoolId string, secret string, host ...string) *Client {
 	}
 	if c.HttpClient == nil {
 		c.HttpClient = &http.Client{}
-		accessToken, err := GetAccessToken(c)
+		_, err := GetAccessToken(c)
 		if err != nil {
 			return nil
 		}
-		src := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: accessToken},
-		)
-		c.HttpClient = oauth2.NewClient(context.Background(), src)
 	}
 	return c
 }
@@ -78,47 +72,11 @@ func NewClientWithError(userPoolId string, secret string, host ...string) (*Clie
 		Host:       clientHost,
 	}
 	if c.HttpClient == nil {
-		c.HttpClient = &http.Client{}
-		accessToken, err := GetAccessToken(c)
+		c.HttpClient = &http.Client{Timeout: 30 * time.Second}
+		_, err := GetAccessToken(c)
 		if err != nil {
 			return nil, err
 		}
-		src := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: accessToken},
-		)
-		c.HttpClient = oauth2.NewClient(context.Background(), src)
-	}
-	return c, nil
-}
-
-func NewClientWithErrorCtx(ctx context.Context, userPoolId string, secret string, host ...string) (*Client, error) {
-	if userPoolId == "" {
-		return nil, errors.New("请填写 userPoolId 参数")
-	}
-	if secret == "" {
-		return nil, errors.New("请填写 secret 参数")
-	}
-	var clientHost string
-	if len(host) == 0 {
-		clientHost = constant.CoreAuthingDefaultUrl
-	} else {
-		clientHost = host[0]
-	}
-	c := &Client{
-		userPoolId: userPoolId,
-		secret:     secret,
-		Host:       clientHost,
-	}
-	if c.HttpClient == nil {
-		c.HttpClient = &http.Client{}
-		accessToken, err := GetAccessToken(c)
-		if err != nil {
-			return nil, err
-		}
-		src := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: accessToken},
-		)
-		c.HttpClient = oauth2.NewClient(ctx, src)
 	}
 	return c, nil
 }
